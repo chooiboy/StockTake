@@ -586,6 +586,7 @@ html, body {
       </svg>
       Connect Google Drive
     </button>
+    <button class="sync-btn" onclick="gSignOut()" id="btnSignOut" style="display:none">Switch Account</button>
     <button class="sync-btn" onclick="importFromFile()" title="Import from file">Import</button>
   </div>
 </div>
@@ -763,8 +764,8 @@ function loadLocal() {
 // ════════════════════════════════════════════════
 
 // !! REPLACE THESE WITH YOUR CREDENTIALS !!
-const GOOGLE_CLIENT_ID = '980360392892-8uvh30nrqum460737ifbef02qpceanje.apps.googleusercontent.com'; // from Google Cloud Console
-const GOOGLE_API_KEY   = 'AIzaSyCKgcTpRAh3sK6Tx5oKj3UP8JZsnOEsJxU';   // from Google Cloud Console
+const GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID'; // from Google Cloud Console
+const GOOGLE_API_KEY   = 'YOUR_GOOGLE_API_KEY';   // from Google Cloud Console
 const SCOPES = 'https://www.googleapis.com/auth/drive.appdata';
 
 function loadGoogleScripts() {
@@ -797,8 +798,9 @@ function initGis() {
       if (resp.error) { setSyncStatus('err', 'Google sign-in failed'); return; }
       accessToken = resp.access_token;
       gapi.client.setToken({ access_token: accessToken });
-      setSyncStatus('ok', 'Connected to Google Drive');
+      driveFileId = null; // reset so we look up file for the new account
       document.getElementById('btnSignIn').style.display = 'none';
+      document.getElementById('btnSignOut').style.display = 'inline-block';
       await syncFromDrive();
     }
   });
@@ -817,7 +819,19 @@ function gSignIn() {
     showToast('Google Drive not configured yet', 'warn');
     return;
   }
-  tokenClient.requestAccessToken({ prompt: '' });
+  // Always show account picker so user can choose which Google account
+  tokenClient.requestAccessToken({ prompt: 'select_account' });
+}
+
+function gSignOut() {
+  if (accessToken) google.accounts.oauth2.revoke(accessToken, () => {});
+  accessToken = null;
+  driveFileId = null;
+  gapi.client.setToken(null);
+  document.getElementById('btnSignIn').style.display = 'inline-flex';
+  document.getElementById('btnSignOut').style.display = 'none';
+  setSyncStatus('', 'Signed out — connect Google Drive to sync');
+  showToast('Signed out — connect a different account');
 }
 
 // Find or create the file in Drive appDataFolder
