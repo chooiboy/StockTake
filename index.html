@@ -800,6 +800,13 @@ function initGis() {
       gapi.client.setToken({ access_token: accessToken });
       driveFileId = null; // reset so we look up file for the new account
       localStorage.setItem('stocktrack_gdrive_connected', '1');
+      try {
+        const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: 'Bearer ' + accessToken }
+        });
+        const user = await info.json();
+        if (user.email) localStorage.setItem('stocktrack_gdrive_hint', user.email);
+      } catch(e) {}
       document.getElementById('btnSignIn').style.display = 'none';
       document.getElementById('btnSignOut').style.display = 'inline-block';
       await syncFromDrive();
@@ -813,7 +820,8 @@ function checkGoogleReady() {
   if (gapiReady && gisReady) {
     if (localStorage.getItem('stocktrack_gdrive_connected') === '1') {
       setSyncStatus('busy', 'Reconnecting to Google Drive…');
-      tokenClient.requestAccessToken({ prompt: '' });
+      const hint = localStorage.getItem('stocktrack_gdrive_hint') || '';
+      tokenClient.requestAccessToken({ prompt: '', login_hint: hint });
     } else {
       setSyncStatus('', 'Ready — sign in to sync with Google Drive');
     }
@@ -834,9 +842,10 @@ function gSignOut() {
   accessToken = null;
   driveFileId = null;
   gapi.client.setToken(null);
+  localStorage.removeItem('stocktrack_gdrive_connected');
+  localStorage.removeItem('stocktrack_gdrive_hint');
   document.getElementById('btnSignIn').style.display = 'inline-flex';
   document.getElementById('btnSignOut').style.display = 'none';
-  localStorage.removeItem('stocktrack_gdrive_connected');
   setSyncStatus('', 'Signed out — connect Google Drive to sync');
   showToast('Signed out — connect a different account');
 }
